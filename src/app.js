@@ -16,6 +16,27 @@ app.use(express.urlencoded({extended:true , limit: "16kb"}))
 app.use(express.static("public"));
 app.use(cookieParser());// to get access and set cookies of the client's browser
 
+//routes import
+import userRouter from "../routes/user.routes.js";
+
+//routes declaration
+app.use('/api/v1/users' , userRouter);//also works for other routes
+// /api/v1/user ==> prefix , gives control to userRouter
+// useRouter ==> it is posted on route '/register' as defined in router.js file 
+
+
+//for register 
+//   http://localhost:8000/api/v1/users/register
+
+//similarly for login
+//   http://localhost:8000/api/v1/users/login
+
+
+
+
+
+
+
 
 export { app };
 

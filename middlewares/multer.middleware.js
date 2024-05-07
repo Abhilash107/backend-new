@@ -12,7 +12,7 @@ const storage = multer.diskStorage({
 })
   
 export const upload = multer({
-    storage,
+  storage,
 });
 
 //Multer allows you to specify how files should be stored. Here, diskStorage is used to store files on the disk.
