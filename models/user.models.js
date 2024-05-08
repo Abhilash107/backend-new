@@ -32,11 +32,6 @@ const userSchema = new Schema({
     coverImage:{
         type:String,
     },
-    subscribtion:{
-        type:String,
-        required:true,
-        enum:['basic','pro','premium'],    
-    },
     watchHistory:[
         {
             type: Schema.Types.ObjectId,
