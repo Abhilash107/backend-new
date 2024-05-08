@@ -16,7 +16,7 @@ const registerUser = asyncHandler( async (req, res)=>{
     //return res
     
 
-    //user datails
+    //user datails  (destructuring)
     const {fullName, email, username, password} = req.body;
     
     if(
@@ -25,7 +25,6 @@ const registerUser = asyncHandler( async (req, res)=>{
     ){
         throw new ApiError(400,"All fields are required")
     }
-
     //check  if user already exists or not
     const existedUser = await User.findOne({
         $or: [{ username }, { email }]
@@ -38,8 +37,15 @@ const registerUser = asyncHandler( async (req, res)=>{
     //images
     //access given by multer
     const avatarLocalPath = req.files?.avatar[0]?.path
-    const coverImageLocalPath = req.files?.coverImage[0]?.path
 
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path
+
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length >0){
+        coverImageLocalPath = req.files.coverImage[0].path;
+
+    }
+    //console.log(req.files);
 
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar file is required")
@@ -78,7 +84,37 @@ const registerUser = asyncHandler( async (req, res)=>{
     )
 
 
+
 })
 
 export { registerUser };
+
+// req.files ===>
+
+//[Object: null prototype] {
+    //avatar: [
+    //     {
+    //       fieldname: 'avatar',
+    //       originalname: 'leo2019.jpg',
+    //       encoding: '7bit',
+    //       mimetype: 'image/jpeg',
+    //       destination: './public/temp',
+    //       filename: 'leo2019.jpg',
+    //       path: 'public\\temp\\leo2019.jpg',
+    //       size: 1848363
+    //     }
+    //   ],
+    //   coverImage: [
+    //     {
+    //       fieldname: 'coverImage',
+    //       originalname: 'leo.jpg',
+    //       encoding: '7bit',
+    //       mimetype: 'image/jpeg',
+    //       destination: './public/temp',
+    //       filename: 'leo.jpg',
+    //       path: 'public\\temp\\leo.jpg',
+    //       size: 2159033
+    //     }
+    //   ]
+    // }
 
