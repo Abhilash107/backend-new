@@ -3,6 +3,25 @@ import { ApiError } from "../utils/ApiError.js";
 import { User} from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+
+
+const generateAccessAndRefreshToken = async(userId)=>{
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforesave: false})
+
+        return {accessToken, refreshToken}
+        
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong")
+        
+    }
+}
+
 const registerUser = asyncHandler( async (req, res)=>{
   
     // get user details from frontend
@@ -87,7 +106,59 @@ const registerUser = asyncHandler( async (req, res)=>{
 
 })
 
-export { registerUser };
+const loginUser = asyncHandler( async (req, res)=>{
+    // req body
+    // username or email 
+    // find the user
+    // password check
+    // access & refresh token
+    // send cookies
+    const {email, username, password} = req.body
+    if(!username || !email){
+        throw new ApiError(400, "username or password is required")    
+    }
+
+    const user =await User.findOne({
+        $or:[{username}, {email}]
+    })
+
+    if (!user) {
+        throw new ApiError(404, "User does not exist")
+    }
+
+    const isPasswordValid = await user.isPasswordCorrect(password)
+
+    if(!isPasswordValid){
+        throw new ApiError(401, "Inalid user credentials" )
+    }
+
+    const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id)
+
+    const loggedInUser = await User.findById(user._id)
+    .select("-password -refreshToken")
+
+    const options = {
+        httpOnly: true,
+        secure: true,
+    }
+
+    return res
+    .status(200)
+    .cookie("accessToken",accessToken, options)
+    .cookie("refreshToken",refreshToken, options)
+    .json(
+        new ApiResponse (
+            200, 
+            {
+                user: loggedInUser, accessToken, refreshToken
+            },
+            "user logged in successfully"
+        )
+    )
+
+})
+
+export { registerUser, loginUser};
 
 // req.files ===>
 
@@ -118,3 +189,32 @@ export { registerUser };
     //   ]
     // }
 
+
+//In MongoDB, the .findOne() method is used to retrieve a single document from a collection that matches a specified query criteria. It returns the first document that satisfies the query condition within the collection.
+
+
+// const generateAccessAndRefreshToken = async(userId)=>{: This line defines an asynchronous function named generateAccessAndRefreshToken that takes a userId as its parameter.
+//     try {: Begins a try block to handle potential errors within the function.
+//     const user = await User.findById(userId): This line awaits the result of a database query to find a user by their ID (userId). It assigns the result to the user variable.
+//     const accessToken = user.generateAccessToken(): Calls a method generateAccessToken() on the retrieved user object to generate an access token. It assigns the result to the accessToken variable.
+//     const refreshToken = user.generateRefreshToken(): Similar to the previous line, this generates a refresh token for the user and assigns it to the refreshToken variable.
+//     user.refreshToken = refreshToken: Assigns the generated refresh token to the refreshToken property of the user object.
+//     await user.save({ validateBeforesave: false}): Saves the modified user object back to the database. The { validateBeforesave: false } option disables any built-in validation checks before saving.
+//     return {accessToken, refreshToken}: Constructs and returns an object containing both the access token and the refresh token.
+//     } catch (error) {: Catches any errors that occur within the try block.
+//     throw new ApiError(500, "Something went wrong"): Throws a new ApiError object with a status code of 500 and a message indicating that something went wrong.
+
+
+
+// const options = { httpOnly: true, secure: true }: Defines an object named options containing properties for cookie settings. httpOnly: true means the cookie is accessible only through HTTP requests, not through JavaScript. secure: true indicates that the cookie should only be sent over HTTPS connections.
+
+// return res: Begins the return statement with the response object (res), indicating that the following methods are chained to this response object.
+// .status(200): Sets the HTTP status code of the response to 200, indicating a successful request.
+
+// .cookie("accessToken",accessToken, options): Sets a cookie named "accessToken" in the response with the value of the accessToken variable (presumably containing the access token generated earlier), and applies the cookie options defined in the options object.
+
+// .cookie("refreshToken",refreshToken, options): Sets a cookie named "refreshToken" in the response with the value of the refreshToken variable (presumably containing the refresh token generated earlier), and applies the same cookie options as defined in the options object.
+
+// .json(...): Converts the provided JavaScript object into JSON format and sends it as the response body.
+
+// new ApiResponse (...): Constructs a new ApiResponse object. It includes the HTTP status code (200), a data object containing information about the logged-in user (loggedInUser), as well as the access token and refresh token, and a message indicating successful user login.
