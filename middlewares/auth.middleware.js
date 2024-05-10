@@ -1,7 +1,7 @@
-import { asyncHandler } from "../utils/asyncHandler";
-import { ApiError } from "../utils/ApiError";
-import { jwt } from "jsonwebtoken";
-import { User } from "../models/user.models";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
+import jwt from 'jsonwebtoken';
+import { User } from "../models/user.models.js";
 
 // note: if an argument isn't used then replace the args with "-" (Ex.- see the res of below function)
 export const verifyJWT = asyncHandler( async (req, _, next)=> {
