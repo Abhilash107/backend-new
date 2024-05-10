@@ -2,7 +2,9 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { ApiError } from "../utils/ApiError.js";
 import { User} from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+
 import { ApiResponse } from "../utils/ApiResponse.js";
+import cookieParser from 'cookie-parser';
 
 
 const generateAccessAndRefreshToken = async(userId)=>{
@@ -158,7 +160,44 @@ const loginUser = asyncHandler( async (req, res)=>{
 
 })
 
-export { registerUser, loginUser};
+const logoutUser = asyncHandler (async (req, res) =>{
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined,
+
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    const options = {
+        httpOnly: true,
+        secure: true,
+    }
+    // This option ensures that the cookie is inaccessible to client-side scripts. y making the cookie accessible only to the server, it helps prevent malicious scripts from accessing sensitive cookie data 
+
+    // When set to true, this option instructs the browser to only send the cookie over HTTPS connections.This helps protect the cookie from being intercepted by attackers during transmission over unsecured HTTP connections. It ensures that the cookie is only transmitted over secure channels, adding an extra layer of security to the cookie data.
+
+    return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(
+        new ApiResponse(200, {}, "User logged out")
+    )
+
+
+})
+
+export { registerUser, loginUser, logoutUser};
+
+
+
+
 
 // req.files ===>
 
