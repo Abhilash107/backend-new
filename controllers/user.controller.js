@@ -526,7 +526,7 @@ const getWatchHistory = asyncHandler(async (req,res)=>{
 })
 
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, upadateAccountDetails, upadateUserAvatar, upadateUserCoverImage,getUserChannelProfile };
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, upadateAccountDetails, upadateUserAvatar, upadateUserCoverImage,getUserChannelProfile,getWatchHistory };
 
 
 
