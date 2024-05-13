@@ -315,6 +315,8 @@ const upadateAccountDetails = asyncHandler(async (req, res)=>{
         new ApiResponse(200, "account details updated successfully")
     )
 
+    
+
 })
 
 const upadateUserAvatar = asyncHandler(async (req, res)=>{
