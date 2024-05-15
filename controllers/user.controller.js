@@ -405,7 +405,6 @@ const getUserChannelProfile = asyncHandler(async (req, res)=>{
         {
             $match:{
                 username:username?.toLowerCase(),
-
             }
         },
 
@@ -463,7 +462,7 @@ const getUserChannelProfile = asyncHandler(async (req, res)=>{
     ])
 
     if(!channel?.length){
-        throw new ApiError(404, "Channel doesn;t exist")
+        throw new ApiError(404, "Channel doesn't exist")
     }
 
     return res

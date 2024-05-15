@@ -1,4 +1,4 @@
-import express from "express";
+import { Request, Response, NextFunction } from "express";
 
 const asyncHandler = (reqHandler)=> {
     return (req, res, next)=>{
@@ -9,8 +9,7 @@ const asyncHandler = (reqHandler)=> {
 
 }
 
-
-export {asyncHandler};
+export { asyncHandler };
 
 
 // const asyncHandler2 = (fn) => async (req, res, next)=>{
