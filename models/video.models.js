@@ -1,15 +1,17 @@
 import mongoose, {Schema} from "mongoose";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
-
 const videoSchema = new Schema({
+
     videoFile: {
         type: String,
         required: [true , "VideoFile is required"],       
     },
-
-    thumbnail: {
-        type: String,
+    thumbnail:{
+        type:{
+            url: String,// a good approach
+            public_id: String,
+        },
         required: true
     },
     title: {
