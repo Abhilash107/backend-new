@@ -190,7 +190,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
     await deleteOnCloudinary(video.thumbnail.public_id)
 
-    await deleteOnCloudinary(video.videoFile, "video")
+    await deleteOnCloudinary(video.videoFile.url, "video")
 
     await Like.deleteMany({
         video: videoId
@@ -207,8 +207,46 @@ const deleteVideo = asyncHandler(async (req, res) => {
     )
 })
 
-const togglePublishStatus = asyncHandler(async (req, res) => {
+const togglePublishStatus = asyncHandler(async (req, res)=> {
     const { videoId } = req.params
+
+    if(!videoId){
+        throw new ApiError(400, "Invalid video id")
+    }
+
+    const video= await Video.findById(videoId)
+
+    if(!video){
+        throw new ApiError(404, "video not found")
+    }
+
+    if(video?.owner.toString !== req.user?._id.toString()){
+        throw new ApiError(500, "You can't toogle publish status as you are not the owner")
+    }
+
+    const toggleVideoPublish = await Video.findByIdAndUpdate(
+        videoId,{
+            $set:{
+                isPublished: !video?.isPublished
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    if(!toggleVideoPublish){
+        throw new ApiError(500, "failed to toggle video publish status")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, {
+            isPublished: toggleVideoPublish.isPublished},
+            "Video publish toggled successfully."
+    )
+    )
 })
 
 export {
