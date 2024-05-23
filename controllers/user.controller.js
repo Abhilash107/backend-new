@@ -490,7 +490,7 @@ const getWatchHistory = asyncHandler(async (req,res)=>{
                 pipeline: [//sub aggregate(add sub pipelines) pipeline to $lookup)
                     {
                         $lookup: {
-                            from: "User",
+                            from: "users",
                             localField: "owner",
                             foreignField: "_id",
                             as: "owner",
