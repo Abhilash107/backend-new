@@ -2,7 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { ApiError } from "../utils/ApiError.js";
 import { User} from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken'; 
 import { ApiResponse } from "../utils/ApiResponse.js";
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
