@@ -1,6 +1,8 @@
 import {v2 as cloudinary} from "cloudinary";
 import { response } from "express";
-import fs from "fs";
+import fs from "fs/promises";
+
+//* Switched to fs.promises.unlink for better asynchronous handling.
 
 
           
@@ -18,7 +20,7 @@ const uploadOnCloudinary = async (localFilePath) =>{
             resource_type: "auto",
         } )
         //file has been uplaoded successfully
-        fs.unlinkSync(localFilePath);
+        await fs.unlinkSync(localFilePath);
         console.log(result);
         return result;
 
