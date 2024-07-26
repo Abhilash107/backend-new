@@ -188,11 +188,7 @@ const updateComment = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid comment id")
     }
 
-    const {content} = req.body
-    if(!content){
-        throw new ApiError(400, "Content is required")
-    }
-
+    
     const comment = await Comment.findById(commentId)
 
     if (!comment) {
@@ -202,6 +198,12 @@ const updateComment = asyncHandler(async (req, res) => {
     if (comment?.owner.toString() != req.user?._id) {// A best approach
         throw new ApiError(404, "Only valid user can update comment")
     }
+    
+    const {content} = req.body
+    if(!content){
+        throw new ApiError(400, "Content is required")
+    }
+
 
     const updateComment = await Comment.findByIdAndUpdate( 
         commentId, 
