@@ -161,7 +161,7 @@ const loginUser = asyncHandler( async (req, res)=>{
 
 })
 
-const logoutUser = asyncHandler (async (req, res) =>{
+const logOutUser = asyncHandler (async (req, res) =>{
     await User.findByIdAndUpdate(
         req.user._id,
         {
@@ -254,13 +254,13 @@ const refreshAccessToken = asyncHandler( async (req, res)=>{
 } )
 
 const changeCurrentPassword = asyncHandler(async (req, res) =>{
-    const {oldpassword, newPassword} = req.body;
+    const {oldPassword, newPassword} = req.body;
 
     //get user._id from DB
     const user = await User.findById(req.user?._id)
     //isPasswordCorrect method is defined in user.models.js 
 
-    const isPasswordCorrect =  await user.isPasswordCorrect(oldpassword)
+    const isPasswordCorrect =  await user.isPasswordCorrect(oldPassword)
 
     if(!isPasswordCorrect){
         throw new ApiError(400, "Invalid old password")
@@ -291,7 +291,7 @@ const getCurrentUser = asyncHandler(async(req, res)=>{
 })
 
 
-const upadateAccountDetails = asyncHandler(async (req, res)=>{
+const updateAccountDetails = asyncHandler(async (req, res)=>{
     const {fullName, email} = req.body;
 
     if(!fullName || !email){
@@ -319,7 +319,7 @@ const upadateAccountDetails = asyncHandler(async (req, res)=>{
 
 })
 
-const upadateUserAvatar = asyncHandler(async (req, res)=>{
+const updateUserAvatar = asyncHandler(async (req, res)=>{
     //req.file ==not files(here only)
     const avatarLocalPath = req.file?.path
     if(!avatarLocalPath){
@@ -356,7 +356,7 @@ const upadateUserAvatar = asyncHandler(async (req, res)=>{
 } )
 
 
-const upadateUserCoverImage = asyncHandler(async (req, res)=>{
+const updateUserCoverImage = asyncHandler(async (req, res)=>{
     //req.file ==not files(here only)
     const coverImageLocalPath = req.file?.path
     
@@ -527,7 +527,7 @@ const getWatchHistory = asyncHandler(async (req,res)=>{
 })
 
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, upadateAccountDetails, upadateUserAvatar, upadateUserCoverImage,getUserChannelProfile,getWatchHistory };
+export { registerUser, loginUser, logOutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage,getUserChannelProfile,getWatchHistory };
 
 
 

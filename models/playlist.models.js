@@ -1,7 +1,7 @@
 import mongoose, {Schema} from "mongoose";
 
 
-const playlistSchema = mongoose.Schema({
+const playlistSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
