@@ -52,7 +52,7 @@ const updateTweet = asyncHandler(async (req, res) => {
     }
 
     if(tweet?.owner.toString() !== req.user?._id.toString()){
-        throw new ApiError(400, "Only owner can edit their tweet")
+        throw new ApiError(403, "Only owner can edit their tweet")
     }
 
     const {content} = req.body
@@ -83,13 +83,40 @@ const updateTweet = asyncHandler(async (req, res) => {
 })
 
 const deleteTweet = asyncHandler(async (req, res) => {
-    //TODO: delete tweet
+    const {tweetId} = req.body
+
+    if(!tweetId){
+        throw new ApiError(400, "Invalid tweetId")
+    }
+
+    const tweet = await Tweet.findById(tweetId)
+
+    if(!tweet){
+        throw new ApiError(400, "Tweet not found")
+    }
+
+    if(tweet?.owner.toString() !== req.user?._id.toString()){
+        throw new ApiError(403, "Only owner can edit their tweet")
+    }
+
+    const deleteTweet = await Tweet.findByIdAndDelete(tweetId)
+
+    if(!deleteTweet){
+        throw new ApiError(500, "failed to delete the tweet")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, {}, "tweet deleted successfully")
+    )
 })
 
 //* pipeline
 const getUserTweets = asyncHandler(async (req, res) => {
     // TODO: get user tweets
 })
+
 export {
     createTweet,
     getUserTweets,
