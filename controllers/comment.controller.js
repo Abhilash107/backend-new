@@ -3,12 +3,11 @@ import { Comment } from "../models/comment.models.js";
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
-import { User } from "../models/user.models.js";
 
 const getVideoComments = asyncHandler(async (req, res) => {
-    //TODO: get all comments for a video
     const {videoId} = req.params
     const {page = 1, limit = 10} = req.query
+
     if(!videoId || videoId.trim() === ""){
         throw new ApiError(400, "Invalid video id")
     }
@@ -16,7 +15,8 @@ const getVideoComments = asyncHandler(async (req, res) => {
     const comments = await Comment
     .find({videoId})
     .skip((page-1)* limit)
-    .limit(limit).exec();
+    .limit(limit)
+    .exec();
 
     //const comments = await Comment.aggregate([
     //     {
@@ -37,9 +37,8 @@ const getVideoComments = asyncHandler(async (req, res) => {
     return res
     .status(200)
     .json(
-        new ApiResponse(200, comments, "retrived all comments")
+        new ApiResponse(200,comments, "fetched all comments" )
     )
-
 
 })
 
@@ -132,14 +131,15 @@ const getVideoComments = asyncHandler(async (req, res) => {
 // });
 
 const addComment = asyncHandler(async (req, res) => {
-    // TODO: add a comment to a video
+   
     const {videoId} = req.params 
+
     if(!videoId || videoId.trim() === ""){
         throw new ApiError(400, "Invalid video id")
     }
-     
 
     const {content} = req.body
+
     if(!content){
         throw new ApiError(400, "Content is required")
     }
@@ -177,20 +177,16 @@ const addComment = asyncHandler(async (req, res) => {
     return res
     .status(200)
     .json(
-        new ApiResponse(200, newComment, "Comments added successfully")
+        new ApiResponse(200, newComment, "Comment added successfully")
     )    
 })
 
 const updateComment = asyncHandler(async (req, res) => {
-    // TODO: update a comment
+    
     const {commentId} = req.params
+
     if(!commentId){
         throw new ApiError(400, "Invalid comment id")
-    }
-
-    const {content} = req.body
-    if(!content){
-        throw new ApiError(400, "Content is required")
     }
 
     const comment = await Comment.findById(commentId)
@@ -201,6 +197,11 @@ const updateComment = asyncHandler(async (req, res) => {
 
     if (comment?.owner.toString() != req.user?._id) {// A best approach
         throw new ApiError(404, "Only valid user can update comment")
+    }
+
+    const {content} = req.body
+    if(!content){
+        throw new ApiError(400, "Content is required")
     }
 
     const updateComment = await Comment.findByIdAndUpdate( 
@@ -220,7 +221,7 @@ const updateComment = asyncHandler(async (req, res) => {
     return res
     .status(200)
     .json(
-        new ApiResponse(200, {}, "Comment upadated successfully")
+        new ApiResponse(200, {}, "Comment updated successfully")
     )
 })
 
@@ -232,8 +233,9 @@ const deleteComment = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid commentId")
     }
 
-    //it's better to check the id is present or not i DB
+    //it's better to check the id is present or not in DB
     const comment = await Comment.findById(commentId)
+
     if (!comment) {
         throw new ApiError(404, "Comment don't exist")
     }
@@ -242,10 +244,13 @@ const deleteComment = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Only valid user can delete comment")
     }
 
-       // user .findOneAndDelete for deleting single element
+    //* for deleting single comment
+    //const deletedComment = await Comment.findOneAndDelete(commentId);
 
-    const deleteComment = await Comment.findOneAndDelete(commentId)// imp , no need of $set / $unset
-    if (!deleteComment) {
+    const deletedComment = await Comment.findByIdAndDelete(commentId)
+    // imp , no need of $set / $unset
+
+    if (!deletedComment) {
         throw new ApiError(400, "Something went wrong while deleting comment")
     }
 
@@ -283,7 +288,7 @@ export {
     getVideoComments, 
     addComment, 
     updateComment,
-     deleteComment
+    deleteComment
 }
 
 

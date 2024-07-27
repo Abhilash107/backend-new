@@ -1,6 +1,6 @@
 import mongoose, {Schema} from "mongoose";
 
-const tweetSchema = mongoose.Schema({
+const tweetSchema = new mongoose.Schema({
     content: {
         type: String,
         required: true,

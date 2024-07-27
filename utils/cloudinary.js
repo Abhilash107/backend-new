@@ -2,8 +2,6 @@ import {v2 as cloudinary} from "cloudinary";
 import { response } from "express";
 import fs from "fs";
 
-
-          
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
   api_key: process.env.CLOUDINARY_API_KEY, 
@@ -17,7 +15,7 @@ const uploadOnCloudinary = async (localFilePath) =>{
         const result = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto",
         } )
-        //file has been uplaoded successfully
+        //file has been uploaded successfully
         fs.unlinkSync(localFilePath);
         console.log(result);
         return result;
@@ -25,9 +23,7 @@ const uploadOnCloudinary = async (localFilePath) =>{
     } catch (error) {
         console.error('Error uploading file to Cloudinary:', error);
         return null;
-        //removes the locally saved temp file as the upload operation got failed   
-        
-        
+        //removes the locally saved temp file as the upload operation got failed    
         
     }
 }
@@ -40,8 +36,12 @@ const deleteOnCloudinary = async (public_id, resource_type="image") => {
         const result = await cloudinary.uploader.destroy(public_id, {
             resource_type: `${resource_type}`
         });
+        console.log(result);
+        return result;
     } catch (error) {
-        return error;
+        console.error('Error deleting file from Cloudinary:', error);
+        return null;
+        //return error;
         // console.log("delete on cloudinary failed", error);
     }
 };
