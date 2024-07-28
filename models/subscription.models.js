@@ -10,7 +10,6 @@ const subscriptionSchema = new mongoose.Schema({
         type: Schema.Types.ObjectId,
         //customers subscribe to the channel 
         ref: "User"
-
     }
 
 
