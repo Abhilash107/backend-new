@@ -1,3 +1,4 @@
+import mongoose, { mongo } from "mongoose"
 import { Like } from "../models/like.models.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
@@ -140,6 +141,77 @@ const toggleTweetLike = asyncHandler( async (req, res)=>{
 //todo
 //* pipeline
 const getLikedVideos = asyncHandler( async (req, res)=>{
+    const likedVideosAggregate = await Like.aggregate([
+        {
+            $match:{
+                likedBy: new mongoose.Types.ObjectId(req.user?._id)
+            } 
+        },
+
+        {
+            $lookup: {
+                from: "videos",
+                localField: "video",
+                foreignField: "_id",
+                as: "likedVideo",
+                pipeline: [
+                    {
+                        $lookup:{
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "ownerDetails",
+                        }
+                    },
+                    {
+                        $unwind: "$ownerDetails"
+                    }
+                ]
+            }
+        },
+
+        {
+            $unwind: "$likedVideo"
+        },
+
+        {
+            $sort:{
+                "likedVideo.createdAt": -1
+            }
+        },
+
+        {
+            $project: {
+                _id: 0,
+                likedVideo: {
+                    "videoFile.url": 1,
+                    "thumbnail.url": 1,
+                    owner: 1,
+                    title: 1,
+                    description: 1,
+                    duration: 1,
+                    views: 1,
+                    createdAt: 1,
+                    ownerDetails: {
+                        username: 1,
+                        fullName: 1,
+                        "avatar.url": 1
+
+                    }
+                }
+            }
+        }
+    ])
+
+    if(!likedVideosAggregate?.length){
+        throw new ApiError(404, "No liked video found")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, likedVideosAggregate, "liked videos fetched successfully")
+    )
 
 } )
 
