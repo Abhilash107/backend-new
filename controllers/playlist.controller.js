@@ -1,3 +1,4 @@
+import mongoose from "mongoose"
 import {Playlist} from "../models/playlist.models.js"
 import {Video} from "../models/video.models.js"
 import {ApiError} from "../utils/ApiError.js"
@@ -206,14 +207,164 @@ const deletePlaylist = asyncHandler(async (req, res) => {
 const getPlaylistById = asyncHandler(async (req, res) => {
     //*pipeline
     const {playlistId} = req.params
-    //TODO: get playlist by id
+    
+    if(!playlistId){
+        throw new ApiError(400, "Invalid playlistId")
+    }
+
+    const playlist = await Playlist.findById(playlistId)
+
+    if(!playlist){
+        throw new ApiError(404, "playlist not found")
+    }
+
+    const playlistVideos = await Playlist.aggregate([
+        {
+            $match:{
+                _id: new mongoose.Types.ObjectId(playlistId)
+            }
+        },
+
+        {
+            $lookup:{
+                from: "videos",
+                localField: "videos",
+                foreignField: "_id",
+                as: "videos",
+                pipeline: [
+                    {
+                        $match: {
+                            isPublished: true
+                        }
+                    },
+
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner"
+                        }
+                    },
+
+                    {
+                        $unwind: "$owner"
+                        //Unwind the owner array for proper $addFields
+                    }
+                ]
+            }
+        },
+
+        {
+            $addFields: {
+                totalVideos: {
+                    $size: "$videos"
+                },
+                totalViews: {
+                    $sum: "$videos.views"
+                },
+                owner: {
+                    $first: "$owner"
+                }
+            }
+        },
+
+        {
+            $project: {
+                name: 1,
+                description: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                totalVideos: 1,
+                totalViews: 1,
+                videos: {
+                    _id: 1,
+                    "videoFile.url": 1,
+                    "thumbnail.url": 1,
+                    title: 1,
+                    description: 1,
+                    duration: 1,
+                    createdAt: 1,
+                    views: 1
+                },
+                owner:{
+                    username: 1,
+                    fullName: 1,
+                    "avatar.url": 1
+                }
+            }
+        }
+    ])
+
+    if(!playlistVideos?.length){
+        throw new ApiError(404, "no videos found")
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, playlistVideos[0], "playlist fetched successfully"));
+
 })
 
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
     //*pipeline
     const {userId} = req.params
-    //TODO: get user playlists
+    
+    if(!userId){
+        throw new ApiError(400, "invalid userId")
+    }
+
+    const playlists = await Playlist.aggregate([
+        {
+            $match: {
+                owner: new mongoose.Types.ObjectId(userId)
+            }
+        },
+
+        {
+            $lookup: {
+                from: "videos",
+                localField: "videos",
+                foreignField: "_id",
+                as: "videos"
+            }
+        },
+
+        {
+            $addFields: {
+                totalVideos: {
+                    $size: "$videos"
+                },
+                totalViews: {
+                    $sum: "$videos.views"
+                }
+            }
+        },
+
+        {
+            $project: {
+                _id: 1,
+                name: 1,
+                description: 1,
+                totalVideos: 1,
+                totalViews: 1,
+                createdAt: 1,
+                updatedAt: 1
+
+            }
+        }
+    ])
+
+    if(!playlists?.length){
+        throw new ApiError(404, "No playlists found")
+    }
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, playlists, "user playlists fetched successfully")
+    )
+
 })
 
 
