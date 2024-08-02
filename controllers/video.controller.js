@@ -12,17 +12,277 @@ import {Comment} from "../models/comment.models.js";
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
     //TODO: get all videos based on query, sort, pagination
+    //* Imp,  Use of Pre-defined Pipeline[]
 
-    
+    if([query, sortBy, sortType, userId].some(field => field === "" || field === undefined)){
+        throw new ApiError(400, "All fields are required")
+    }
+
+    if(!userId){
+        throw new ApiError(400, "Invalid userId")
+    }
+
+    const pipeline = []
+        // match the userId and isPublished 
+    pipeline.push({
+        $match: {
+            owner: new mongoose.Types.ObjectId(userId),
+            isPublished: true 
+        }
+    })
 
 
+    // sortBy
+    //Dynamic Field: [sortBy] allows you to use the value of the sortBy variable as the field name to sort by.
+    if(sortBy && sortType){
+        pipeline.push({
+            $sort: {
+                [sortBy]: sortType === "asc" ? 1 : -1
+            }
+        })
+    }else{
+        pipeline.push({
+            $sort:{
+                createdAt: -1
+            }
+        })
+    }
 
+    pipeline.push(
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "ownerDetails",
+                pipeline: [
+                    {
+                        $project: {
+                            username: 1,
+                            "avatar.url": 1
+                        }
+                    }
+                ]
+            }
+        },
+
+        {
+            $unwind: "$ownerDetails"
+        },
+
+        {
+            $project: {
+                title:1,
+                views: 1
+            }
+        }
+
+    )
+
+    const videoAggregate = await Video.aggregate(pipeline)
+
+    const options = {
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10)
+    }
+
+    // Use aggregatePaginate when you need to paginate through the results of an aggregation query, simplifying the integration of aggregation and pagination.
+    const videos = await Video.aggregatePaginate(videoAggregate, options)
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, videos, "Videos fetched successfully")
+    )
 
 })
 
+const getVideoById = asyncHandler(async (req, res) => {
+   //* pipeline
+   const {videoId} = req.params
+
+   if(!videoId){
+    throw new ApiError(400, "Invalid videoId")
+   }
+
+   const video = await Video.aggregate([
+    {
+        $match:{
+            _id: new mongoose.Types.ObjectId(videoId)
+        }
+    },
+        //* channels details
+        //owner, subscribers
+    {   
+        $lookup: {
+            from: "users",
+            localField:"owner",
+            foreignField: "_id",
+            as:"owner",
+            pipeline:[
+                {  
+                    $lookup: {
+                        from: "subscriptions",
+                        localField:"_id",
+                        foreignField: "channel",
+                        as:"subscribers",
+                    },
+                },
+                
+                {
+                    $addFields:{
+                        subscriberCount: {
+                            $size: "$subscribers"
+                        },
+                        
+                        isSubscribed: {
+                            $cond:{
+                                if:{
+                                    $in:[
+                                        new mongoose.Types.ObjectId(req.user?._id,
+                                            "$subscribers.subscriber"
+                                        )
+                                    ]
+                                },
+                                then: true,
+                                else: false
+                            }
+                        }
+                    }
+                },
+
+                {
+                    $project: {
+                        username: 1,
+                        "avatar.url": 1,
+                        subscriberCount: 1,
+                        isSubscribed: 1,
+                    }
+                }
+
+            ]
+        }
+    },
+
+    { // likes
+        $lookup: {
+            from: "likes",
+            localField: "_id",
+            foreignField: "video",
+            as: "likes"
+        }
+    },
+
+    {
+        $lookup: {
+            from: "comments",
+            localField: "_id",
+            foreignField: "video",
+            as: "comments",
+            pipeline: [
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "owner",
+                        foreignField: "_id",
+                        as: "commenter"
+                    }
+                },
+
+                {
+                    $unwind: "$commenter"
+                },
+
+                {
+                    $project: {
+                        content: 1,
+                        createdAt: 1,
+                        "commenter.username": 1,
+                        "commenter.avatar.url": 1
+                    }
+                }
+            ]
+        }
+    },
+
+    {
+        $addFields:{
+            likesCount: {
+                $size: "$likes"
+            },
+
+            commentsCount: {
+                $size: "$comments"
+            },
+            
+            isLiked: {
+                $cond:{
+                    if: {
+                        $in: [new mongoose.Types.ObjectId(req.user?._id),
+                            "$likes.likedBy"
+                        ]
+                    },
+                    then: true,
+                    else: false,
+                }
+            },
+
+            owner: {
+                $first: "$owner"
+            },
+        }
+    },
+
+    {
+        $project:{
+            "videoFile.url": 1,
+            "thumbnail.url": 1,
+            owner: 1,
+            title: 1,
+            description: 1,
+            views: 1,
+            duration : 1,
+            createdAt: 1,
+            likesCount: 1,
+            isLiked: 1,
+            commentsCount:1,
+            comments: 1
+        }
+    }
+   ])
+
+   if(!video?.length){
+    throw new ApiError(404, "Video not found")
+   }
+
+   await Video.findByIdAndUpdate(
+    videoId,
+    {
+        $inc: {
+            views: 1
+        }
+    }
+   )
+
+   await User.findByIdAndUpdate(
+    req.user?._id, {
+        $addToSet: {
+            watchHistory: videoId
+        }
+    }
+   )
+
+   return res
+   .status(200)
+   .json(
+    new ApiResponse(200, video[0], "Video fetched successfully")
+   )
+})
+
+
 const publishAVideo = asyncHandler(async (req, res) => {
    
-    // TODO: get video, upload to cloudinary, create video 
+    // TODO: get video, upload to Cloudinary, create video 
     const { title, description} = req.body
 
     if (!title?.trim() || !description?.trim()) {
@@ -79,157 +339,6 @@ const publishAVideo = asyncHandler(async (req, res) => {
     
 })
 
-const getVideoById = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
-    //TODO: get video by id
-
-    if(!videoId){
-        throw new ApiError(400, "invalid video id")
-    }
-
-    // getting video details using pipelines
-    const video = await Video.aggregate([
-        {
-            $match: {
-                _id: new mongoose.Types.ObjectId(videoId)
-            }
-        },
-
-        {//* likes
-            $lookup: {
-                from: "likes",
-                localField: "_id",
-                foreignField: "video",
-                as: "likes"
-
-            }
-        },
-
-        {//* comments
-            $lookup: {
-                from: "comments",
-                localField: "_id",
-                foreignField: "video",
-                as: "comments"
-
-            }
-        },
-
-        {//* info about owner field
-            $lookup: {
-                from: "users",
-                localField: "owner",
-                foreignField: "_id",
-                as: "owner",
-                pipeline: [
-                    {
-                        $lookup: {
-                            from: "subscriptions",
-                            localField: "_id",
-                            foreignField: "channel",
-                            as: "subscribers"
-                        }
-                    },
-
-                    {
-                        $addFields: {
-                            subscribersCount: {
-                                $size: "$subscribers"
-                            },
-                            isSubscribed: {
-                                $cond: {
-                                    if: {
-                                        $in: [
-                                            req.user?._id,
-                                            "$subscribers.subscriber"
-                                        ]
-                                    },
-                                    then: true,
-                                    else: false
-                                
-                                }
-                            }
-                        }
-                    },
-
-                    {
-                        $project: {
-                            username: 1,
-                            "avatar.url": 1,
-                            subscribersCount: 1,
-                            isSubscribed: 1
-                        }
-                    }
-                ]
-
-            }
-        },
-
-        {
-            $addFields: {
-                likesCount: {
-                    $size: "$likes"
-                },
-                owner: {
-                    $arrayElemAt: ["$owner", 0]
-                },
-                isLiked: {
-                    $cond: {
-                        if: { $in: [req.user?._id, "$likes.likedBy"] },
-                        then: true,
-                        else: false
-                    }
-
-                }
-            }
-        },
-        {
-            $project: {
-                "videoFile.url": 1,
-                title: 1,
-                description: 1,
-                views: 1,
-                createdAt: 1,
-                duration: 1,
-                comments: 1,
-                owner: 1,
-                likesCount: 1,
-                isLiked: 1
-            }
-        }
-
-    ])
-
-    if(!video || video.length === 0 ){
-        throw new ApiError(500, "failed to fetch video")
-    }
-
-    await Video.findByIdAndUpdate(
-        videoId,
-        {
-            $inc: {
-                views: 1
-            }
-        }
-    )
-
-    await Video.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $addToSet: {
-                watchHistory: videoId
-            }
-        },
-    )
-
-
-
-
-
-
-
-
-})
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
@@ -254,8 +363,8 @@ const updateVideo = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Only valid user can update the video")
     }
 
-    // deleting old thumbnail and updating new thumbnail
-
+    //? deleting old thumbnail and updating new thumbnail
+    //* In your schema definition, the thumbnail field is an object with url and public_id properties. Therefore, to access the public_id,
     const thumbnailToDelete = video.thumbnail.public_id
 
     const thumbnailLocalPath = req.file?.thumbnailLocalPath
@@ -306,35 +415,39 @@ const updateVideo = asyncHandler(async (req, res) => {
     )
 })
 
-const deleteVideo = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
-    //TODO: delete video
+
+const deleteVideo = asyncHandler(async (req, res)=>{
+    const {videoId} = req.params
 
     if(!videoId){
-        throw new ApiError(400, "invalid video Id")
+        throw new ApiError(400, "invalid videoId")
     }
 
-    //* search by Id
-    const video = await Video.findById(videoId)
+    const video = await Video.findById(videoId);
 
-    if(!video){
+    if (!video) {
         throw new ApiError(404, "No video found");
     }
 
-    //* check if user is the owner or not
-    if(video?.owner.toString() !== req.user?._id.toString()){
-        throw new ApiError(403, "you can't delete this video, as you are not the owner")
+    if (video?.owner.toString() !== req.user?._id.toString()) {
+        throw new ApiError(
+            403, "only owner can edit their credentials"
+        )
     }
 
-    const deleteVideo = await Video.findByIdAndDelete(videoId)
+    const videoDelete = await Video.findByIdAndDelete(videoId)
 
-    if(!deleteVideo){
-        throw new ApiError(500, "failed to delete this video, please try again")
+    if(!videoDelete){
+        throw new ApiError(500, "failed to delete the video")
     }
 
-    await deleteOnCloudinary(video.thumbnail.public_id)
+    if (video.thumbnail && video.thumbnail.public_id) {
+        await deleteOnCloudinary(video.thumbnail.public_id);
+    }
 
-    await deleteOnCloudinary(video.videoFile.url, "video")
+    if (video.video && video.video.public_id) {
+        await deleteOnCloudinary(video.video.public_id, "video");
+    }
 
     await Like.deleteMany({
         video: videoId
@@ -344,54 +457,60 @@ const deleteVideo = asyncHandler(async (req, res) => {
         video: videoId
     })
 
+    // await Promise.all([
+    //     Like.deleteMany({ video: videoId }),
+    //     Comment.deleteMany({ video: videoId })
+    // ])
+
+    //* This will execute both Like.deleteMany and Comment.deleteMany in parallel. They both start at the same time and complete independently. If either one fails, the whole Promise.all will fail.
+
     return res
     .status(200)
-    .json(
-        new ApiResponse(200, {}, "video deleted successfully")
-    )
+    .json(new ApiResponse(200, {}, "Video deleted successfully"));
+    
 })
 
-const togglePublishStatus = asyncHandler(async (req, res)=> {
-    const { videoId } = req.params
+
+const togglePublishStatus = asyncHandler(async (req, res)=>{
+    const {videoId} = req.params
 
     if(!videoId){
-        throw new ApiError(400, "Invalid video id")
+        throw new ApiError(400, "Invalid videoId")
     }
 
-    const video= await Video.findById(videoId)
+    const video = await Video.findById(videoId)
 
     if(!video){
         throw new ApiError(404, "video not found")
     }
 
-    if(video?.owner.toString !== req.user?._id.toString()){
-        throw new ApiError(500, "You can't toogle publish status as you are not the owner")
+    if(video?.owner.toString() !== req.user?._id.toString()){
+        throw new ApiError(403, "Only owner can edit their credentials")
     }
 
-    const toggleVideoPublish = await Video.findByIdAndUpdate(
-        videoId,{
-            $set:{
-                isPublished: !video?.isPublished
+    const toggledPublishStatus = await Video.findByIdAndUpdate(
+        videoId,
+        {
+            $set: {
+                isPublished: !video.isPublished
             }
         },
-        {
-            new: true
-        }
+        {new: true}
     )
 
-    if(!toggleVideoPublish){
-        throw new ApiError(500, "failed to toggle video publish status")
+    if(!toggledPublishStatus){
+        throw new ApiError(500, "failed to toggle Video publish status")
     }
 
     return res
     .status(200)
     .json(
-        new ApiResponse(200, {
-            isPublished: toggleVideoPublish.isPublished},
-            "Video publish toggled successfully."
-    )
+        new ApiResponse(200, {isPublished: toggledPublishStatus.isPublished},
+            "video publish toggled successfully"
+        )
     )
 })
+
 
 export {
     getAllVideos,
