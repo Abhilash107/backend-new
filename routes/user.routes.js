@@ -32,7 +32,7 @@ router.route("/change_password").post(verifyJWT, changeCurrentPassword)
 router.route("/current-user").get(verifyJWT, getCurrentUser)
 
 //patch
-router.route("/upadte-account").patch(verifyJWT, updateAccountDetails)
+router.route("/update-account").patch(verifyJWT, updateAccountDetails)
 
 // single 
 router.route("/avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar)
