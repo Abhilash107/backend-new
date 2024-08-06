@@ -77,7 +77,7 @@ const registerUser = asyncHandler( async (req, res)=>{
     const avatar = await uploadOnCloudinary(avatarLocalPath) ;
     const coverImage = await uploadOnCloudinary(coverImageLocalPath) ;
 
-    if(!avatar  || !avatar.url){
+    if(!avatar){
         throw new ApiError(400 , "Avatar file is required")
     }
 
@@ -117,8 +117,8 @@ const loginUser = asyncHandler( async (req, res)=>{
     // access & refresh token
     // send cookies
     const {email, username, password} = req.body
-    if(!username && !email){
-        throw new ApiError(400, "username or password is required")    
+    if((!username) || (!email)){
+        throw new ApiError(400, "username or email is required")    
     }
 
     const user =await User.findOne({
@@ -287,7 +287,9 @@ const changeCurrentPassword = asyncHandler(async (req, res) =>{
 const getCurrentUser = asyncHandler(async(req, res)=>{
     return res
     .status(200)
-    .json(200, req.user,"current user fetched successfully" )
+    .json(
+        new ApiResponse(200, req.user, "current user fetched successfully")
+    )
 })
 
 
@@ -395,10 +397,9 @@ const updateUserCoverImage = asyncHandler(async (req, res)=>{
 
 const getUserChannelProfile = asyncHandler(async (req, res)=>{
     //get url of the profile
-    const {username} = req.params
+    const {username} = req.body
     if (!username?.trim()) {
         throw new ApiError(400, "username is missing")
-        
     }
 
     const channel = await User.aggregate([
@@ -432,12 +433,12 @@ const getUserChannelProfile = asyncHandler(async (req, res)=>{
                 subscribersCount: {
                     $size: "$subscribers"
                 },
-                channelsSubscibedToCount: {
+                channelsSubscribedToCount: {
                     $size: "$subscribedTo"
                 },
                 isSubscribed: {
                     $cond: {
-                        if: {$in: [req.user?._id, "subscribers.subscriber"]},
+                        if: {$in: [new mongoose.Types.ObjectId(req.user?._id), "$subscribers.subscriber"]},
                         then: true,
                         else: false
 
@@ -452,7 +453,7 @@ const getUserChannelProfile = asyncHandler(async (req, res)=>{
                 fullName: 1,
                 username: 1,
                 subscribersCount: 1,
-                channelsSubscibedToCount: 1,
+                channelsSubscribedToCount: 1,
                 isSubscribed: 1,
                 avatar: 1,
                 coverImage: 1,

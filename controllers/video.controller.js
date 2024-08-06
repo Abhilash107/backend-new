@@ -100,7 +100,11 @@ const getAllVideos = asyncHandler(async (req, res) => {
 const getVideoById = asyncHandler(async (req, res) => {
    //* pipeline
    const {videoId} = req.params
-
+   
+   if (!mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new ApiError(400, "Invalid videoId format");
+   }
+   
    if(!videoId){
     throw new ApiError(400, "Invalid videoId")
    }
@@ -139,9 +143,7 @@ const getVideoById = asyncHandler(async (req, res) => {
                             $cond:{
                                 if:{
                                     $in:[
-                                        new mongoose.Types.ObjectId(req.user?._id,
-                                            "$subscribers.subscriber"
-                                        )
+                                        new mongoose.Types.ObjectId(req.user?._id), "$subscribers.subscriber"
                                     ]
                                 },
                                 then: true,
@@ -246,7 +248,8 @@ const getVideoById = asyncHandler(async (req, res) => {
             likesCount: 1,
             isLiked: 1,
             commentsCount:1,
-            comments: 1
+            comments: 1,
+            isPublished: 1
         }
     }
    ])
@@ -289,8 +292,8 @@ const publishAVideo = asyncHandler(async (req, res) => {
         throw new ApiError(400, "All fields are required");
     }
 
-    const videoFileLocalPath = req.files?.videoFile[0].path
-    const thumbnailLocalPath = req.files?.thumbnail[0].path
+    const videoFileLocalPath = req.files?.videoFile[0]?.path
+    const thumbnailLocalPath = req.files?.thumbnail[0]?.path
 
     if(!videoFileLocalPath){
         throw new ApiError(400, "videoFileLocalPath is required")
@@ -335,7 +338,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
     return res
     .status(200)
-    .json(new ApiResponse(200, video, "Video   uploaded successfully"));
+    .json(new ApiResponse(200, video, "Video uploaded successfully"));
     
 })
 
@@ -349,9 +352,9 @@ const updateVideo = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid video Id")
     }
 
-    if(! (title && description) ){
-        throw new ApiError(400, "Video title and description are required")
-    }
+    // if(! (title && description) ){
+    //     throw new ApiError(400, "Video title and description are required")
+    // }
 
     const video = await Video.findById(videoId)
 
@@ -366,13 +369,12 @@ const updateVideo = asyncHandler(async (req, res) => {
     //? deleting old thumbnail and updating new thumbnail
     //* In your schema definition, the thumbnail field is an object with url and public_id properties. Therefore, to access the public_id,
     const thumbnailToDelete = video.thumbnail.public_id
-
-    const thumbnailLocalPath = req.file?.thumbnailLocalPath
+    // upload.single so use req.file.path
+    const thumbnailLocalPath =  req.file?.path;
 
     if(!thumbnailLocalPath){
         throw new ApiError(400, "thumbnail is required")
     }
-
 
     const newThumbnail = await uploadOnCloudinary(thumbnailLocalPath)
 
