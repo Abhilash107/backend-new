@@ -4,7 +4,6 @@ import { User} from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from 'jsonwebtoken'; 
 import { ApiResponse } from "../utils/ApiResponse.js";
-import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 
 
@@ -60,7 +59,6 @@ const registerUser = asyncHandler( async (req, res)=>{
     //access given by multer
     const avatarLocalPath = req.files?.avatar[0]?.path
 
-    // const coverImageLocalPath = req.files?.coverImage[0]?.path
 
     let coverImageLocalPath;
     if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length >0){
